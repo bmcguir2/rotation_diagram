@@ -8,6 +8,8 @@
 
 # 0.0 - Project start
 # 0.5 - switching to weighted error analysis
+# 1.0 - adds ability to scale partition function 'manually'
+# 1.1 - adds ability to check calculated partition function
 
 #############################################################
 #							Preamble						#
@@ -35,13 +37,15 @@ from datetime import datetime
 from scipy.optimize import curve_fit
 #warnings.filterwarnings('error')
 
-version = 0.5 
+version = 1.1
 
 h = 6.626*10**(-34) #Planck's constant in J*s
 k = 1.381*10**(-23) #Boltzmann's constant in J/K
 kcm = 0.69503476 #Boltzmann's constant in cm-1/K
 ckm = 2.998*10**5 #speed of light in km/s
 ccm = 2.998*10**10 #speed of light in cm/s
+
+molecule = ''
 
 #############################################################
 #							Warning 						#
@@ -182,7 +186,7 @@ def fit_func(x, m, b):
 	
 #do_fit does the least squares fit to the data	
 
-def do_fit(rot_cons,frequency,dT,dT_err,Eup,g,Aij,dV,dV_err,tbg):
+def do_fit(rot_cons,frequency,dT,dT_err,Eup,g,Aij,dV,dV_err,tbg,Qs):
 
 	#do the y-axis calculation; k in J/K, dV in km/s, frequency in MHz, Aij in s^-1; conversions done in the equation
 	
@@ -204,7 +208,7 @@ def do_fit(rot_cons,frequency,dT,dT_err,Eup,g,Aij,dV,dV_err,tbg):
 	
 	T_guess = 150
 	
-	Q = calc_Q(T_guess,rot_cons)
+	Q = calc_Q(T_guess,rot_cons)*Qs
 	
 	m_guess = -1/T_guess
 	
@@ -228,7 +232,7 @@ def do_fit(rot_cons,frequency,dT,dT_err,Eup,g,Aij,dV,dV_err,tbg):
 
 	T_rot_err = abs(T_rot_max - T_rot)
 	
-	Q = calc_Q(T_rot,rot_cons)
+	Q = calc_Q(T_rot,rot_cons)*Qs
 	
 	Nt = np.exp(b + np.log(Q))
 	
@@ -290,18 +294,31 @@ def make_plot(y, Eup, m, b, Nt, T_rot, name, y_err, T_rot_err, Nt_err):
 	
 #make_rot_diagram is a wrapper that takes an input file and makes a diagram
 
-def make_rot_diagram(molecule_file):
+def make_rot_diagram(molecule_file,Qs=1.0):
+	
+	global molecule
+	
+	molecule = molecule_file
 	
 	raw_array = read_molecule(molecule_file)
 	
 	name,rot_cons,frequency,dT,dT_err,Eup,g,Aij,dV,dV_err,tbg = parse_molfile(raw_array)
 	
-	Nt, T_rot, y, x, m, b, y_err, T_rot_err, Nt_err = do_fit(rot_cons,frequency,dT,dT_err,Eup,g,Aij,dV,dV_err,tbg)
+	Nt, T_rot, y, x, m, b, y_err, T_rot_err, Nt_err = do_fit(rot_cons,frequency,dT,dT_err,Eup,g,Aij,dV,dV_err,tbg,Qs)
 	
 	make_plot(y, Eup, m, b, Nt, T_rot, name, y_err, T_rot_err, Nt_err)
 	
 	print('NT = {:.2e} +/- {:.2e} cm-2, T_rot = {:.2f} +/- {:.2f} K' .format(Nt,Nt_err,T_rot,T_rot_err))
 	
+#check_Q provides a look at the calculated Q value, to guide the user to the appropriate scaling factor
+
+def check_Q(T):
+
+	raw_array = read_molecule(molecule)
+		
+	name,rot_cons,frequency,dT,dT_err,Eup,g,Aij,dV,dV_err,tbg = parse_molfile(raw_array)
+	
+	return calc_Q(T,rot_cons)
 	
 #############################################################
 #							Run Program						#
