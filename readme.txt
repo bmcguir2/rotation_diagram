@@ -16,7 +16,7 @@ This program takes an input file containing data on a molecule and observed tran
 
 Actually running the program is trivial once the input file is set up:
 
-> make_rotation_diagram(input_file)
+> make_rot_diagram(input_file)
 
 An example input file is provided.  It follows the following format:
 
